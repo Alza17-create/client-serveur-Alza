@@ -1,10 +1,14 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <signal.h>
-
+#include <unistd.h>
+#include <string.h>
+#include <arpa/inet.h>
 #include <dirent.h>
-#include <stdio.h>
+#include <netdb.h>
+#include <signal.h>
 
 void fin (int i);
 void appli(int no_client_socket);
@@ -13,21 +17,42 @@ int ma_socket;
 
 struct dir;
 
-void main ( void )
+int main ( void )
 {
+char addr[256];
+int port;
+
+printf("Addresse serveur (0 pour 127.0.0.1): ");
+scanf("%s", addr);
+if (strcmp(addr,"0") == 0){
+	bzero(addr,sizeof(addr));
+	strcpy(addr,"127.0.0.1");
+}
+
+
+char str_port[256];
+printf("Port serveur (0 pour 30000): ");
+scanf("%s", str_port);
+port = atoi(str_port);
+
+if (strcmp(str_port,"0") == 0)
+	port = 30000;
+
+
+
 int client_socket;
 struct sockaddr_in mon_address, client_address;
 int mon_address_longueur, lg;
 
 bzero(&mon_address,sizeof(mon_address));
-mon_address.sin_port = htons(30000);
+mon_address.sin_port = htons(port);
 mon_address.sin_family = AF_INET;
-mon_address.sin_addr.s_addr = htonl(INADDR_ANY);
-
+long hostAddr = inet_addr(addr);
+bcopy(&hostAddr,&mon_address.sin_addr,sizeof(hostAddr));
 /* creation de socket */
 if ((ma_socket = socket(AF_INET,SOCK_STREAM,0))== -1)
 {
-  printf("ca chie avec la creation\n");
+  printf("Creation echoue\n");
   exit(0);
 }
 signal(SIGINT,fin);
@@ -44,7 +69,13 @@ while(1)
   client_socket = accept(ma_socket,
                          (struct sockaddr *)&client_address,
                          &mon_address_longueur);
-
+bzero(buffer,sizeof(buffer));
+read(client_socket,buffer,512);
+printf("%s\n",buffer);
+bzero(buffer,sizeof(buffer));
+strcpy(buffer,"Bonjour client");
+write(client_socket,buffer,512);
+bzero(buffer,sizeof(buffer));
   if (fork() == 0)
   {
     close(ma_socket);
